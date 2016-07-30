@@ -58,8 +58,10 @@ T.get('account/verify_credentials', null, function(err, data, response) {
 
     // tweet event handler. Emitted each time a tweet comes into the stream.
     stream.on('tweet', function (tweet) {
-      if (mentionsMe(SCREEN_NAME, tweet.entities.user_mentions)) { // The tweet is a mention.
-        var sender = tweet.user.screen_name;
+      var sender = tweet.user.screen_name;
+
+      // If the tweet is a mention and I'm not the source
+      if (mentionsMe(SCREEN_NAME, tweet.entities.user_mentions) && ! (sender === SCREEN_NAME) ) {
         console.log("[STREAM] New mention from: @"+sender);
 
         // Send a reply. See: in_reply_to_status_id https://dev.twitter.com/rest/reference/post/statuses/update
