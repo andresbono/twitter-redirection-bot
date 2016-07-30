@@ -29,7 +29,7 @@ T.get('account/verify_credentials', null, function(err, data, response) {
     // User Stream
     var stream = T.stream('user');
 
-    // stream.on('message', function (msg) { console.log("[INFO] Msg received") });
+    // stream.on('message', function (msg) { console.log("[INFO] Msg received\n", msg) });
 
     // Emitted when the response is received from Twitter.
     stream.on('connected', function () {
@@ -49,7 +49,7 @@ T.get('account/verify_credentials', null, function(err, data, response) {
           if(!err) {
             console.log("[STREAM] DM sent to @"+newfollower);
           } else {
-            console.log("[ERR] Can't send the DM to @"+newfollower);
+            console.log("[ERROR] Can't send the DM to @"+newfollower);
             console.log(data);
           }
         })
@@ -63,80 +63,39 @@ T.get('account/verify_credentials', null, function(err, data, response) {
         console.log("[STREAM] New mention from: @"+sender);
 
         // Send a reply. See: in_reply_to_status_id https://dev.twitter.com/rest/reference/post/statuses/update
-        var textReply = "please follow <other>";
+        var textReply = "please follow other";
         var reply = makeReply(sender, tweet.entities.user_mentions, textReply, SCREEN_NAME);
 
         T.post('statuses/update', { status: reply, in_reply_to_status_id: tweet.id }, function(err, data, response) {
           if(!err) {
             console.log("[STREAM] Reply sent: \""+reply+"\"");
           } else {
-            console.log("[ERR] Can't send the reply");
+            console.log("[ERROR] Can't send the reply");
             console.log(data);
           }
         })
       }
     })
 
-
-/*
-    event: 'direct_message'
-    Emitted when a direct message is sent to the user. Unfortunately, Twitter has not documented this event for user streams.
-*/
-    stream.on('direct_message', function (directMsg) {
-      //...
+    // Emitted when an API request or response error occurs.
+    stream.on('error', function (errMsg) {
+      console.log('[ERROR] Stream error');
+      console.log(errMsg);
     })
 
-
-/*
-event: 'error'
-Emitted when an API request or response error occurs. An Error object is emitted, with properties:
-
-{
-  message:      '...',  // error message
-  statusCode:   '...',  // statusCode from Twitter
-  code:         '...',  // error code from Twitter
-  twitterReply: '...',  // raw response data from Twitter
-  allErrors:    '...'   // array of errors returned from Twitter
-}
-
-*/
-    // stream.on('err' // TODO
-    stream.err
-
-
-/*
-    event: 'limit'
-    Emitted each time a limitation message comes into the stream.
-*/
+    // Emitted each time a limitation message comes into the stream.
     stream.on('limit', function (limitMessage) {
-      console.log("[WARN] Limitation message received.");
+      console.log("[WARN] Limitation message received");
       console.log(limitMessage);
     })
 
-/*
-    event: 'reconnect'
-    Emitted when a reconnection attempt to Twitter is scheduled. If Twitter is having problems or we get rate limited, we schedule a reconnect according to Twitter's reconnection guidelines. The last http request and response objects are emitted, along with the time (in milliseconds) left before the reconnect occurs.
-*/
-    stream.on('reconnect', function (request, response, connectInterval) {
-      //...
-    })
-
-    /*
-    event: 'disconnect'
-    Emitted when a disconnect message comes from Twitter. This occurs if you have multiple streams connected to Twitter's API. Upon receiving a disconnect message from Twitter, Twit will close the connection and emit this event with the message details received from twitter.*/
-    stream.on('disconnect', function (disconnectMessage) {
-      //...
-    })
-
-
-
-
-
-
-
+    // Emitted when a reconnection attempt to Twitter is scheduled. If Twitter is having problems or we get rate limited, we schedule a reconnect according to Twitter's reconnection guidelines. The last http request and response objects are emitted, along with the time (in milliseconds) left before the reconnect occurs.
+    stream.on('reconnect', function (req, res, connectInterval) {
+      console.log('[WARN] Got disconnected. Scheduling reconnect')
+    });
 
   } else {
-    console.log("[ERR] Can't verify credentials");
+    console.log("[ERROR] Can't verify credentials");
     console.log(data);
   }
 })
@@ -152,6 +111,7 @@ function mentionsMe(my_screen_name, user_mentions) {
       break;
     }
   }
+
   return res;
 }
 
