@@ -1,0 +1,5 @@
+# File with Keys and Access Tokens
+app/secret.json
+
+# Dependencies
+node_modules
