@@ -1,8 +1,5 @@
 const NEW_USERNAME = '';
 
-// The text notification that the bot sends to the new account
-const textFollowerNotification = "Your old account has a new follower: @";
-
 // Internationalization
 const DEFAULT_LANG = 'en'; // The default language must exist in textReply and textDM objects.
 
@@ -12,6 +9,11 @@ const textReply = {
 };
 
 const textDM = {
+  en: `Contact @${NEW_USERNAME}, please.`,
+  es: `Contacta a @${NEW_USERNAME}, por favor.`
+};
+
+const textDMNewFollower = {
   en: 'Thanks for following me.',
   es: 'Gracias por seguirme.'
 };
@@ -47,7 +49,7 @@ T.get('account/verify_credentials', null, function(err, data, response) {
     // User Stream
     var stream = T.stream('user');
 
-    stream.on('message', function (msg) { console.log("[INFO] Msg received\n", msg) });
+    // stream.on('message', function (msg) { console.log("[INFO] Msg received\n", msg) });
 
     // Emitted when the response is received from Twitter.
     stream.on('connected', function () {
@@ -62,17 +64,20 @@ T.get('account/verify_credentials', null, function(err, data, response) {
 
         // Get source language and select text
         var lang = eventMsg.source.lang;
-        if (! textDM.hasOwnProperty(lang)){ // If property doesn't exist
+        if (! textDMNewFollower.hasOwnProperty(lang)){ // If property doesn't exist
           lang = DEFAULT_LANG;
         }
 
         // Send a Direct Message. See: https://dev.twitter.com/rest/reference/post/direct_messages/new
-        T.post('direct_messages/new', { screen_name: newfollower, text: textDM[lang] }, function(err, data, response) {
+        T.post('direct_messages/new', { screen_name: newfollower, text: textDMNewFollower[lang] }, function(err, data, response) {
           if(!err) {
             console.log("[STREAM] DM sent to @"+newfollower);
 
-            // Notify the new account with a Direct Message
-            T.post('direct_messages/new', { screen_name: NEW_USERNAME, text: textFollowerNotification+newfollower }, function(err, data, response) {
+            // Notify the new account with a Direct Message. New account have to
+            // follow old account (See: https://support.twitter.com/articles/231559)
+            var textFollowerNotification = "Your old account has a new follower: @"+newfollower;
+
+            T.post('direct_messages/new', { screen_name: NEW_USERNAME, text: textFollowerNotification }, function(err, data, response) {
               if(err) {
                 console.log("[ERROR] Can't send the notification to @"+NEW_USERNAME);
               }
@@ -95,9 +100,9 @@ T.get('account/verify_credentials', null, function(err, data, response) {
 
         // Get detected language or user language
         var lang = DEFAULT_LANG;
-        if (textDM.hasOwnProperty(tweet.lang)){ // If detected language exists
+        if (textReply.hasOwnProperty(tweet.lang)){ // If detected language exists
           lang = tweet.lang;
-        } else if (textDM.hasOwnProperty(tweet.user.lang)) {  // If user language exists
+        } else if (textReply.hasOwnProperty(tweet.user.lang)) {  // If user language exists
           lang = tweet.user.lang;
         }
 
@@ -119,6 +124,41 @@ T.get('account/verify_credentials', null, function(err, data, response) {
       }
     })
 
+    // direct_message event handler
+    stream.on('direct_message', function (directMsg) {
+
+      console.log (directMsg);
+      if (directMsg.recipient.screen_name === SCREEN_NAME) { // DM received
+        var sender = directMsg.sender.screen_name;
+        console.log("[STREAM] New DM from @"+sender);
+
+        // Get source language and select text
+        var lang = directMsg.sender.lang;
+        if (! textDM.hasOwnProperty(lang)){ // If property doesn't exist
+          lang = DEFAULT_LANG;
+        }
+
+        // Send a Direct Message
+        T.post('direct_messages/new', { screen_name: sender, text: textDM[lang] }, function(err, data, response) {
+          if(!err) {
+            console.log("[STREAM] DM sent to @"+sender);
+
+            // Notify the new account with a Direct Message
+            var textDMNotification = "@"+sender +"has sent a DM to @"+ SCREEN_NAME + ": \"" + directMsg.text + "\".";
+
+            T.post('direct_messages/new', { screen_name: NEW_USERNAME, text: textDMNotification }, function(err, data, response) {
+              if(err) {
+                console.log("[ERROR] Can't send the notification to @"+NEW_USERNAME);
+              }
+            });
+          } else {
+            console.log("[ERROR] Can't send the DM to @"+sender);
+            console.log(data);
+          }
+        })
+      } */
+    })
+
     // Emitted when an API request or response error occurs.
     stream.on('error', function (errMsg) {
       console.log('[ERROR] Stream error');
@@ -131,7 +171,7 @@ T.get('account/verify_credentials', null, function(err, data, response) {
       console.log(limitMessage);
     })
 
-    // Emitted when a reconnection attempt to Twitter is scheduled. If Twitter is having problems or we get rate limited, we schedule a reconnect according to Twitter's reconnection guidelines. The last http request and response objects are emitted, along with the time (in milliseconds) left before the reconnect occurs.
+    // Emitted when a reconnection attempt to Twitter is scheduled.
     stream.on('reconnect', function (req, res, connectInterval) {
       console.log('[WARN] Got disconnected. Scheduling reconnect');
     });
