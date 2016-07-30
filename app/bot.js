@@ -1,8 +1,7 @@
-var Twit = require('twit'); // Twitter API Client See: https://www.npmjs.com/package/twit
-
-const TWEETLEN = 140;
-
 const NEW_USERNAME = '';
+
+// The text notification that the bot sends to the new account
+const textFollowerNotification = "Your old account has a new follower: @";
 
 // Internationalization
 const DEFAULT_LANG = 'en'; // The default language must exist in textReply and textDM objects.
@@ -17,6 +16,9 @@ const textDM = {
   es: 'Gracias por seguirme.'
 };
 
+const TWEETLEN = 140;
+
+var Twit = require('twit'); // Twitter API Client See: https://www.npmjs.com/package/twit
 
 // import secret.json file
 var secret = require("./secret");
@@ -68,6 +70,13 @@ T.get('account/verify_credentials', null, function(err, data, response) {
         T.post('direct_messages/new', { screen_name: newfollower, text: textDM[lang] }, function(err, data, response) {
           if(!err) {
             console.log("[STREAM] DM sent to @"+newfollower);
+
+            // Notify the new account with a Direct Message
+            T.post('direct_messages/new', { screen_name: NEW_USERNAME, text: textFollowerNotification+newfollower }, function(err, data, response) {
+              if(err) {
+                console.log("[ERROR] Can't send the notification to @"+NEW_USERNAME);
+              }
+            });
           } else {
             console.log("[ERROR] Can't send the DM to @"+newfollower);
             console.log(data);
