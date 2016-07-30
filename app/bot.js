@@ -68,7 +68,11 @@ T.get('account/verify_credentials', null, function(err, data, response) {
         var textReply = "please follow other";
         var reply = makeReply(sender, tweet.entities.user_mentions, textReply, SCREEN_NAME);
 
-        T.post('statuses/update', { status: reply, in_reply_to_status_id: tweet.id }, function(err, data, response) {
+        // NOTE: "when working with JavaScript in particular, please make sure
+        // you use the stringified IDs id_str instead of id to avoid any integer
+        // overflow issues." http://stackoverflow.com/a/23789697
+        // See algo: https://dev.twitter.com/overview/api/twitter-ids-json-and-snowflake
+        T.post('statuses/update', { status: reply, in_reply_to_status_id: tweet.id_str }, function(err, data, response) {
           if(!err) {
             console.log("[STREAM] Reply sent: \""+reply+"\"");
           } else {
