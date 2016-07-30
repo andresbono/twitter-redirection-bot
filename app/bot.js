@@ -20,9 +20,9 @@ var T = new Twit(secret);
 
 T.get('account/verify_credentials', null, function(err, data, response) {
   if(!err) {
-    console.log("[INFO] Verified credentials");
+    console.log("[INFO] Credentials verified");
 
-    // Own Twitter name
+    // Twitter name
     var SCREEN_NAME = data.screen_name;
     console.log("[INFO] Twitter user: " + SCREEN_NAME);
 
@@ -30,6 +30,11 @@ T.get('account/verify_credentials', null, function(err, data, response) {
     var stream = T.stream('user');
 
     // stream.on('message', function (msg) { console.log("[INFO] Msg received") });
+
+    // Emitted when the response is received from Twitter.
+    stream.on('connected', function () {
+      console.log('[INFO] Stream connected')
+    })
 
     // follow event handler
     stream.on('follow', function (eventMsg) {
@@ -72,7 +77,63 @@ T.get('account/verify_credentials', null, function(err, data, response) {
       }
     })
 
-    // stream.err // TODO
+
+/*
+    event: 'direct_message'
+    Emitted when a direct message is sent to the user. Unfortunately, Twitter has not documented this event for user streams.
+*/
+    stream.on('direct_message', function (directMsg) {
+      //...
+    })
+
+
+/*
+event: 'error'
+Emitted when an API request or response error occurs. An Error object is emitted, with properties:
+
+{
+  message:      '...',  // error message
+  statusCode:   '...',  // statusCode from Twitter
+  code:         '...',  // error code from Twitter
+  twitterReply: '...',  // raw response data from Twitter
+  allErrors:    '...'   // array of errors returned from Twitter
+}
+
+*/
+    // stream.on('err' // TODO
+    stream.err
+
+
+/*
+    event: 'limit'
+    Emitted each time a limitation message comes into the stream.
+*/
+    stream.on('limit', function (limitMessage) {
+      console.log("[WARN] Limitation message received.");
+      console.log(limitMessage);
+    })
+
+/*
+    event: 'reconnect'
+    Emitted when a reconnection attempt to Twitter is scheduled. If Twitter is having problems or we get rate limited, we schedule a reconnect according to Twitter's reconnection guidelines. The last http request and response objects are emitted, along with the time (in milliseconds) left before the reconnect occurs.
+*/
+    stream.on('reconnect', function (request, response, connectInterval) {
+      //...
+    })
+
+    /*
+    event: 'disconnect'
+    Emitted when a disconnect message comes from Twitter. This occurs if you have multiple streams connected to Twitter's API. Upon receiving a disconnect message from Twitter, Twit will close the connection and emit this event with the message details received from twitter.*/
+    stream.on('disconnect', function (disconnectMessage) {
+      //...
+    })
+
+
+
+
+
+
+
 
   } else {
     console.log("[ERR] Can't verify credentials");
