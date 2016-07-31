@@ -49,7 +49,7 @@ T.get('account/verify_credentials', null, function(err, data, response) {
     // User Stream
     var stream = T.stream('user');
 
-    // stream.on('message', function (msg) { console.log("[INFO] Msg received\n", msg) });
+    stream.on('message', function (msg) { console.log("[INFO] Msg received\n", msg) });
 
     // Emitted when the response is received from Twitter.
     stream.on('connected', function () {
@@ -98,29 +98,31 @@ T.get('account/verify_credentials', null, function(err, data, response) {
       if (mentionsMe(SCREEN_NAME, tweet.entities.user_mentions) && ! (sender === SCREEN_NAME) ) {
         console.log("[STREAM] New mention from: @"+sender);
 
-        // Get detected language or user language
-        var lang = DEFAULT_LANG;
-        if (textReply.hasOwnProperty(tweet.lang)){ // If detected language exists
-          lang = tweet.lang;
-        } else if (textReply.hasOwnProperty(tweet.user.lang)) {  // If user language exists
-          lang = tweet.user.lang;
-        }
-
-        // Send a reply. See: in_reply_to_status_id https://dev.twitter.com/rest/reference/post/statuses/update
-        var reply = makeReply(sender, tweet.entities.user_mentions, textReply[lang], SCREEN_NAME);
-
-        // NOTE: "when working with JavaScript in particular, please make sure
-        // you use the stringified IDs id_str instead of id to avoid any integer
-        // overflow issues." http://stackoverflow.com/a/23789697
-        // See algo: https://dev.twitter.com/overview/api/twitter-ids-json-and-snowflake
-        T.post('statuses/update', { status: reply, in_reply_to_status_id: tweet.id_str }, function(err, data, response) {
-          if(!err) {
-            console.log("[STREAM] Reply sent: \""+reply+"\"");
-          } else {
-            console.log("[ERROR] Can't send the reply");
-            console.log(data);
+        if (firstMentionInConversation(tweet.in_reply_to_status_id_str)) {
+          // Get detected language or user language
+          var lang = DEFAULT_LANG;
+          if (textReply.hasOwnProperty(tweet.lang)){ // If detected language exists
+            lang = tweet.lang;
+          } else if (textReply.hasOwnProperty(tweet.user.lang)) {  // If user language exists
+            lang = tweet.user.lang;
           }
-        })
+
+          // Send a reply. See: in_reply_to_status_id https://dev.twitter.com/rest/reference/post/statuses/update
+          var reply = makeReply(sender, tweet.entities.user_mentions, textReply[lang], SCREEN_NAME);
+
+          // NOTE: "when working with JavaScript in particular, please make sure
+          // you use the stringified IDs id_str instead of id to avoid any integer
+          // overflow issues." http://stackoverflow.com/a/23789697
+          // See algo: https://dev.twitter.com/overview/api/twitter-ids-json-and-snowflake
+          T.post('statuses/update', { status: reply, in_reply_to_status_id: tweet.id_str }, function(err, data, response) {
+            if(!err) {
+              console.log("[STREAM] Reply sent: \""+reply+"\"");
+            } else {
+              console.log("[ERROR] Can't send the reply");
+              console.log(data);
+            }
+          })
+        }
       }
     })
 
@@ -156,7 +158,7 @@ T.get('account/verify_credentials', null, function(err, data, response) {
             console.log(data);
           }
         })
-      } */
+      }
     })
 
     // Emitted when an API request or response error occurs.
@@ -217,6 +219,30 @@ function makeReply(target, user_mentions, textReply, my_screen_name) {
     res += " " + textReply;
   } else { // If not, at least reply to the main target
     res = "@" + target + " " + textReply;
+  }
+
+  return res;
+}
+
+function firstMentionInConversation(tweetId) {
+  // Recursive function 💕
+  // NOTE: The idea here is that we only want to reply our "follow other" tweet
+  // once per conversation so we don't fed up people
+
+  var res = false;
+
+  if(tweetId != null) {
+    // Get the tweet. Optimized with trim_user
+    T.get('statuses/show', { id: tweetId, trim_user: true }, function(err, tweet, response) {
+      if(mentionsMe("prueba144", tweet.entities.user_mentions)) {
+        res = false;
+      } else {
+        // Keep digging!!
+        res = firstMentionInConversation(tweet.in_reply_to_status_id_str);
+      }
+    })
+  } else {
+    res = true;
   }
 
   return res;
